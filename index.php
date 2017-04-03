@@ -73,15 +73,17 @@
 
 					function crawl_site($u)
 					{
+
 						// Obtain global $crawled_urls array
 						global $crawled_urls;
 
 						// Non alpha-numeric characters replaced
 						$uen=urlencode($u);
-
+						echo $uen;
 						// $uen is not a key in crawled urls array or the date stored for $uen is less that 25 seconds ago
 						if((array_key_exists($uen,$crawled_urls)==0 || $crawled_urls[$uen] < date("YmdHis",strtotime('-25 seconds', time()))))
 						{
+
 							// Collect html elements as dom from URL
 							$html = file_get_html($u);
 							
@@ -93,6 +95,7 @@
 							{
 								// Normalize URL and break as array
 								$url=perfect_url($li->href,$u);
+								
 								$enurl=urlencode($url);
 
 								// The URL does not begin with "mail" or "java" and url does not exist in found_urls array
@@ -113,9 +116,35 @@
 						if($url=='') { echo "<h3>Invalid URL!</h3>";}
 						else
 						{
+						
+						//extract(parse_url($url));
+						$urlParts = parse_url($url); 
+						//echo "$scheme  s   $host  h  $port p $user u $pass pass $path path  $query  q  $fragment f";
+						echo $urlParts["scheme"];
+						if (!isset($urlParts[scheme])) 
+						{ 
+							$url = "http://" . $url;
+							$urlParts = parse_url($url);
+						}
+						$nUrl = $urlParts["scheme"] . "://" . $urlParts["host"]; echo $nUrl;
 							echo "<h2>Result - URL's Found</h2><ul style='word-wrap: break-word;width: 400px;line-height: 25px;'>";
-							crawl_site($url);
+							crawl_site($nUrl);
 							echo "</ul>";
+							
+							//$xmlMap = fopen("sitemap.xml", "w+");
+							//fclose($xmlMap);
+							
+							//Create XML document
+							$xml = new DOMDocument();
+							$xml_album = $xml->createElement("urlset");
+							$xml_track = $xml->createElement("url");
+							$xml_album->appendChild( $xml_track );
+							$xml->appendChild( $xml_album );
+
+							$xml->save("sitemap.xml");
+							//caching? recursion, like breadthfirst , isset()
+							
+
 						}
 					}
 				?>
