@@ -11,9 +11,12 @@
 					<input type="submit" name="submit" value="Start Crawling"/>
 				</form>
 				<?php
+				error_reporting(E_ALL);
+ini_set('display_errors', '1');
 					include("simple_html_dom.php");
 					$crawled_urls=array();
 					$found_urls=array();
+					$cnt = 0;
 
 					function rel2abs($rel, $base)
 					{
@@ -70,65 +73,128 @@
 
 						return $u;
 					}
-
+function del($url)
+{
+$file_headers = @get_headers($url);
+//echo $file_headers[0];
+if(!$file_headers || $file_headers[0] == 'HTTP/1.1 404 Not Found' || $file_headers[0] == 'HTTP/1.1 410 Gone') {
+    $exists = "na";
+}
+else {
+    $exists = "ya";
+}
+return $exists;
+}
 					function crawl_site($u)
 					{
-
 						// Obtain global $crawled_urls array
 						global $crawled_urls;
-
+						global $found_urls;
+						global $nUrl;
+						global $cnt;
+						echo $cnt;
+						$urlParts = parse_url($u);
+						
+						if (!isset($urlParts["path"])) { $current = "/"; }
+						else { $current = $urlParts["path"]; }
+						
+						$current = $nUrl . "" . $current;
+						//$crawled_urls[$current] = 0; 
 						// Non alpha-numeric characters replaced
-						$uen=urlencode($u);
-						echo $uen;
+						//$uen=urlencode($u);
+						//echo $uen;
 						// $uen is not a key in crawled urls array or the date stored for $uen is less that 25 seconds ago
-						if((array_key_exists($uen,$crawled_urls)==0 || $crawled_urls[$uen] < date("YmdHis",strtotime('-25 seconds', time()))))
+						
+						//if((array_key_exists($uen,$crawled_urls)==0 || $crawled_urls[$uen] < date("YmdHis",strtotime('-25 seconds', time()))))
+						if (!isset($crawled_urls[$current]))
 						{
-
-							// Collect html elements as dom from URL
-							$html = file_get_html($u);
-							
-							// Store encoded url and timestamp
-							$crawled_urls[$uen]=date("YmdHis");
-
-							// All anchor tags in the $html object
-							foreach($html->find("a") as $li)
+							if($current!='' && substr($current,0,4)!="mail" && substr($current,0,4)!="java" && del($current) == "ya")
 							{
-								// Normalize URL and break as array
-								$url=perfect_url($li->href,$u);
-								
-								$enurl=urlencode($url);
+								// Add url as key in found_urls adn give a 1
+								$crawled_urls[$current] = 0;
+							}
+							
+						}				
+						if (isset($crawled_urls[$current]) && $crawled_urls[$current] == 0 && del($current) == "ya")
+						{
+							$crawled_urls[$current] = 1;
+							// Collect html elements as dom from URL
+							
 
-								// The URL does not begin with "mail" or "java" and url does not exist in found_urls array
-								if($url!='' && substr($url,0,4)!="mail" && substr($url,0,4)!="java" && array_key_exists($enurl,$found_urls)==0)
+							$html = file_get_html($current);
+
+							// Store encoded url and timestamp
+							//$crawled_urls[$uen]=date("YmdHis");
+
+							// The URL does not begin with "mail" or "java" and url does not exist in found_urls array
+
+								// All anchor tags in the $html object
+								foreach($html->find("a") as $li)
 								{
-									// Add url as key in found_urls adn give a 1
-									$found_urls[$enurl]=1;
-									echo "<li><a target='_blank' href='".$url."'>".$url."</a></li>";
+									// Normalize URL and break as array
+									//$url=perfect_url($li->href,$u);
+									//$enurl=urlencode($url);
+									$urlParts2 = parse_url($li->href);
+									$current2 = ($urlParts2["path"] == "" ? "/" : $urlParts2["path"]);
+									
+									if (substr($current2,0,3)=="../") {$current2 = substr($current2, 2); }
+									else if (substr($current2,0,2)=="./")  {$current2 = substr($current2, 1); } 
+									else if (substr($current2,0,1)!="/")  { $current2 = "/" . $current2; } 
+									
+									if($current2!='' && substr($current2,0,4)!="mail" && substr($current2,0,4)!="java")
+									{
+										// Add url as key in found_urls adn give a 1
+										array_push($found_urls, $nUrl . "" . $current2);
+										echo $current2 . "<br />";
+									}
 								}
 							}
 						}
-					}
 
 					if(isset($_POST['submit']))
 					{
 						$url=$_POST['url'];
-    
-						if($url=='') { echo "<h3>Invalid URL!</h3>";}
+						
+						if($url=='') { echo "<h3>No URL</h3>";}
 						else
 						{
-						
-						//extract(parse_url($url));
-						$urlParts = parse_url($url); 
-						//echo "$scheme  s   $host  h  $port p $user u $pass pass $path path  $query  q  $fragment f";
-						echo $urlParts["scheme"];
-						if (!isset($urlParts[scheme])) 
-						{ 
-							$url = "http://" . $url;
-							$urlParts = parse_url($url);
-						}
-						$nUrl = $urlParts["scheme"] . "://" . $urlParts["host"]; echo $nUrl;
+							//extract(parse_url($url));
+							$urlParts = parse_url($url); 
+							//echo "$scheme  s   $host  h  $port p $user u $pass pass $path path  $query  q  $fragment f";
+							if (!isset($urlParts['scheme'])) 
+							{ 
+								$url = "http://" . $url;
+								$urlParts = parse_url($url);
+							}
+							$nUrl = $urlParts["scheme"] . "://" . $urlParts["host"];
 							echo "<h2>Result - URL's Found</h2><ul style='word-wrap: break-word;width: 400px;line-height: 25px;'>";
+							//array_push($crawled_urls, $nUrl);
+							$crawled_urls[$nUrl] = 0;
 							crawl_site($nUrl);
+							//while (list($key, $value) = each($crawled_urls)) {
+								
+								//if ($value!=1) {crawl_site($url . $key);}
+							//}
+							
+							$loop = true;
+							while ($loop)
+							{
+								if ($cnt < count($found_urls))
+								{
+								//echo "b" . count($found_urls) . "e";
+									crawl_site($found_urls[$cnt]);
+									$cnt++;
+								}
+								else { $loop = false;}
+							}
+							
+							
+							foreach ($crawled_urls as $i => $j)
+							{
+								echo $i . "<br />";
+								//crawl_site($i);
+							}
+							
 							echo "</ul>";
 							
 							//$xmlMap = fopen("sitemap.xml", "w+");
@@ -143,8 +209,6 @@
 
 							$xml->save("sitemap.xml");
 							//caching? recursion, like breadthfirst , isset()
-							
-
 						}
 					}
 				?>
