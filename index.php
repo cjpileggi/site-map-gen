@@ -87,18 +87,20 @@ return $exists;
 }
 					function crawl_site($u)
 					{
+						echo "Begin Crawl Site <br />"; 
 						// Obtain global $crawled_urls array
 						global $crawled_urls;
 						global $found_urls;
 						global $nUrl;
-						global $cnt;
-						echo $cnt;
+						$current = "";
 						$urlParts = parse_url($u);
-						
-						if (!isset($urlParts["path"])) { $current = "/"; }
-						else { $current = $urlParts["path"]; }
+						echo "URL Path: " . $urlParts["path"] . "<br />";
+						if (isset($urlParts["path"])) { $current = $urlParts["path"]; }//{ $current = "/"; }
+						//else 
 						
 						$current = $nUrl . "" . $current;
+						
+						echo "Current Path: " . $current . "<br />";
 						//$crawled_urls[$current] = 0; 
 						// Non alpha-numeric characters replaced
 						//$uen=urlencode($u);
@@ -107,16 +109,19 @@ return $exists;
 						
 						//if((array_key_exists($uen,$crawled_urls)==0 || $crawled_urls[$uen] < date("YmdHis",strtotime('-25 seconds', time()))))
 						if (!isset($crawled_urls[$current]))
-						{
+						{   
+							echo "IN isset Current: " . del($current) ."<br />";
 							if($current!='' && substr($current,0,4)!="mail" && substr($current,0,4)!="java" && del($current) == "ya")
 							{
+								echo "IN isset Current inner <br />";
 								// Add url as key in found_urls adn give a 1
 								$crawled_urls[$current] = 0;
 							}
-							
+							echo "OUT isset Current <br />";
 						}				
 						if (isset($crawled_urls[$current]) && $crawled_urls[$current] == 0 && del($current) == "ya")
 						{
+							echo "IN assign Current <br />";
 							$crawled_urls[$current] = 1;
 							// Collect html elements as dom from URL
 							
@@ -131,25 +136,37 @@ return $exists;
 								// All anchor tags in the $html object
 								foreach($html->find("a") as $li)
 								{
+									echo "IN HREF Loop<br />";
 									// Normalize URL and break as array
 									//$url=perfect_url($li->href,$u);
 									//$enurl=urlencode($url);
 									$urlParts2 = parse_url($li->href);
+									echo "URL PATH 2: " . $urlParts2["path"] . " <br />";
 									$current2 = ($urlParts2["path"] == "" ? "/" : $urlParts2["path"]);
+									echo "Current2: " . $current2 . " <br />";
 									
 									if (substr($current2,0,3)=="../") {$current2 = substr($current2, 2); }
 									else if (substr($current2,0,2)=="./")  {$current2 = substr($current2, 1); } 
 									else if (substr($current2,0,1)!="/")  { $current2 = "/" . $current2; } 
-									
+									echo "New Current2: " . $current2 . " <br />";
 									if($current2!='' && substr($current2,0,4)!="mail" && substr($current2,0,4)!="java")
 									{
+										
+										echo "In found Assign <br />";
+										if (substr($current,-1)!="/")  { $current = substr($current, 0, -1); } 
+										$current2 = $current . "" . $current2; //substr($nUrl,0,-1)
+										echo "New NEW Current2: " . $current2 . " <br />";
 										// Add url as key in found_urls adn give a 1
-										array_push($found_urls, $nUrl . "" . $current2);
-										echo $current2 . "<br />";
+										array_push($found_urls, preg_replace('/([^:\/])(\/+)/','$1/',$current2));
+									
+										
 									}
+									echo "OUT HREF Loop<br />";
 								}
 							}
+							echo "OUT assign Current<br />";
 						}
+						
 
 					if(isset($_POST['submit']))
 					{
@@ -166,10 +183,10 @@ return $exists;
 								$url = "http://" . $url;
 								$urlParts = parse_url($url);
 							}
-							$nUrl = $urlParts["scheme"] . "://" . $urlParts["host"];
+							$nUrl = $urlParts["scheme"] . "://" . $urlParts["host"]; // . "/"
 							echo "<h2>Result - URL's Found</h2><ul style='word-wrap: break-word;width: 400px;line-height: 25px;'>";
 							//array_push($crawled_urls, $nUrl);
-							$crawled_urls[$nUrl] = 0;
+							$crawled_urls[$nUrl + "/"] = 0;
 							crawl_site($nUrl);
 							//while (list($key, $value) = each($crawled_urls)) {
 								
@@ -179,13 +196,21 @@ return $exists;
 							$loop = true;
 							while ($loop)
 							{
-								if ($cnt < count($found_urls))
+								echo "Begin Loop <br />";
+								if ($cnt < count($found_urls) && $cnt<50) 
 								{
-								//echo "b" . count($found_urls) . "e";
-									crawl_site($found_urls[$cnt]);
+									echo "Begin Count Loop: ". $cnt ."<". count($found_urls) . "<br />";
+									if($crawled_urls[$found_urls[$cnt]] != 1)
+									{
+										echo "Processed: ". $found_urls[$cnt] . $crawled_urls[$found_urls[$cnt]] . "<br />";
+										//echo "b" . count($found_urls) . "e";
+										crawl_site($found_urls[$cnt]);
+									}
 									$cnt++;
+									echo "End Count Loop: " . $cnt . "<br />";
 								}
 								else { $loop = false;}
+								echo "End Loop <br />";
 							}
 							
 							
@@ -194,6 +219,11 @@ return $exists;
 								echo $i . "<br />";
 								//crawl_site($i);
 							}
+							/*foreach ($found_urls as $i)
+							{
+								echo $i . "<br />";
+								//crawl_site($i);
+							}*/
 							
 							echo "</ul>";
 							
